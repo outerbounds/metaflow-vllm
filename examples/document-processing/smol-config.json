@@ -1,0 +1,33 @@
+{
+    "huggingface_hub": {
+        "repo_id": "meta-llama/Llama-3.2-1B",
+        "allow_patterns": "*.json,*.txt",
+        "force_download": false,
+        "environment": {
+            "packages": {"datasets": "3.6.0", "huggingface-hub": "0.24.0", "omegaconf": "2.4.0.dev3"},
+            "python": "3.11.5"
+        },
+        "hf_home": "/models",
+        "secret": "outerbounds.eddie-hf"
+    },
+    "inference_environment_resources": {
+        "gpu": 1,
+        "cpu": 6,
+        "memory": 28000,
+        "compute_pool": "single-gpu",
+        "image": "docker.io/eddieob/vllm-flashinfer-metaflow:latest"
+    },
+    "dataset": {
+        "name": "ServiceNow/repliqa",
+        "splits": ["repliqa_0"],
+        "sample_size": 100,
+        "batch_size": 16,
+        "max_num_batches": 1
+    },
+    "processing": {
+        "max_document_length": 4000,
+        "temperature": 0.1,
+        "max_tokens": 1000,
+        "complexity_threshold": 0.7
+    }
+}

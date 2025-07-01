@@ -1,8 +1,22 @@
-from metaflow import FlowSpec, step, pypi, vllm, kubernetes, secrets, environment
+from metaflow import (
+    FlowSpec,
+    step,
+    vllm,
+    kubernetes,
+    secrets,
+    Config,
+    config_expr,
+    current,
+    card,
+    pypi,
+)
 from metaflow.profilers import gpu_profile
+from metaflow.cards import Table
 
 
 class HelloVLLM(FlowSpec):
+
+    config = Config("config", default="smol-config.json")
 
     @step
     def start(self):
@@ -10,83 +24,108 @@ class HelloVLLM(FlowSpec):
 
     @secrets(sources=["outerbounds.eddie-hf"])
     @gpu_profile(interval=1)
-    @kubernetes(gpu=2, cpu=32, memory=24000)
-    @pypi(packages={"vllm": "0.6.1", "openai": "1.52.0", "httpx": "0.27.0", "setuptools": "<81"})
-    @vllm(model = "meta-llama/Llama-3.2-1B", debug=True)
+    @kubernetes(**config_expr("config.inference_environment_resources"))
+    @vllm(
+        model=config_expr("config.model_a"),
+        engine_args=config_expr("config.vllm_engine_args"),
+        openai_api_server=True,
+    )
     @step
     def test_first_model(self):
         """
-        An introduction to using the @vllm decorator.
+        An introduction to using the @vllm decorator in API server mode.
 
-        Notice that the @kubernetes decorator uses default base image.
-        We install the vLLM package and OpenAI client using normal @pypi usage.
-        This dependency management approach contrasts that of the end step.
+        This example uses openai_api_server=True for backward compatibility.
+        The decorator starts a vLLM subprocess server and provides an OpenAI-compatible API.
 
-        This step serves one model via a vLLM server.
-        It also turns on debugging for verbose logs.
-        
+        For better performance, consider using the native engine mode (see flow_native.py).
+
         NOTE: vLLM serves one model per server instance. If you need multiple
         models, create separate steps with separate @vllm decorators.
         """
-        import openai
-        import httpx
+        import openai # pylint: disable=import-error
 
         # Use OpenAI-compatible API to communicate with vLLM server
         client = openai.OpenAI(
-            base_url="http://localhost:8000/v1",
-            api_key="token-abc123",  # vLLM doesn't require real API key
-            http_client=httpx.Client(proxies={}),
+            base_url=current.vllm.local_endpoint,
+            api_key=current.vllm.local_api_key,
         )
 
         # Using completions API instead of chat completions to avoid chat template issues
-        response = client.completions.create(
-            model="meta-llama/Llama-3.2-1B",
-            prompt="What are the leading Chinese tech companies?",
-            max_tokens=150,
-            temperature=0.7,
-        )
-        
-        print(f"\n\n[@test] Response from Llama-3.2-1B: {response.choices[0].text}\n\n")
+        self.responses = {
+            "model": [self.config.model_a] * len(self.config.prompts),
+            "prompts": self.config.prompts,
+            "responses": [],
+        }
+        for prompt in self.config.prompts:
+            response = client.completions.create(
+                model=self.config.model_a,
+                prompt=prompt,
+                max_tokens=150,
+                temperature=0.7,
+            )
+            self.responses["responses"].append(response.choices[0].text)
         self.next(self.join)
 
     @secrets(sources=["outerbounds.eddie-hf"])
     @gpu_profile(interval=1)
-    @kubernetes(gpu=2, cpu=32, memory=24000)
-    @pypi(packages={"vllm": "0.6.1", "openai": "1.52.0", "httpx": "0.27.0", "setuptools": "<81"})
-    @vllm(model="Qwen/Qwen2.5-0.5B", debug=True)
+    @kubernetes(**config_expr("config.inference_environment_resources"))
+    @vllm(
+        model=config_expr("config.model_b"),
+        engine_args=config_expr("config.vllm_engine_args"),
+        openai_api_server=True,
+    )
     @step
     def test_second_model(self):
         """
-        Demonstrates how to use a second model.
-        Each @vllm decorator creates a separate server instance.
+        Demonstrates how to use a second model in API server mode.
+        Each @vllm decorator with openai_api_server=True creates a separate server instance.
         """
-        import openai
-        import httpx
+        import openai # pylint: disable=import-error
 
         # Use OpenAI-compatible API to communicate with vLLM server
         client = openai.OpenAI(
-            base_url="http://localhost:8000/v1",
-            api_key="token-abc123",  # vLLM doesn't require real API key
-            http_client=httpx.Client(proxies={}),
+            base_url=current.vllm.local_endpoint,
+            api_key=current.vllm.local_api_key,
         )
 
-        response = client.completions.create(
-            model="Qwen/Qwen2.5-0.5B",
-            prompt="What are the leading Chinese tech companies?",
-            max_tokens=150,
-            temperature=0.7,
-        )
-        
-        print(f"\n\n[@test] Response from Qwen2.5-0.5B: {response.choices[0].text}\n\n")
+        self.responses = {
+            "model": [self.config.model_b] * len(self.config.prompts),
+            "prompts": self.config.prompts,
+            "responses": [],
+        }
+        for prompt in self.config.prompts:
+            response = client.completions.create(
+                model=self.config.model_b,
+                prompt=prompt,
+                max_tokens=150,
+                temperature=0.7,
+            )
+            self.responses["responses"].append(response.choices[0].text)
         self.next(self.join)
 
     @step
     def join(self, inputs):
+        self.responses = [i.responses for i in inputs]
         self.next(self.end)
 
+    @card
+    @pypi(packages={"pandas": "2.3.0"})
     @step
     def end(self):
-        pass
+        import pandas as pd # pylint: disable=import-error
+
+        prompts = self.responses[0]["prompts"]
+        model_a_responses = self.responses[0]["responses"]
+        model_b_responses = self.responses[1]["responses"]
+        self.df = pd.DataFrame(
+            {
+                "prompt": prompts,
+                "model_a": model_a_responses,
+                "model_b": model_b_responses,
+            }
+        )
+        current.card.append(Table.from_dataframe(self.df))
 
 
 if __name__ == "__main__":

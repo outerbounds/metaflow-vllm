@@ -1,0 +1,17 @@
+You are a document analysis expert. Analyze the document and question below, then respond with valid JSON.
+
+VALID DOCUMENT TOPICS: {topics}
+
+DOCUMENT: {document_text}
+
+QUESTION: {question}
+
+Provide a JSON response with these exact fields:
+{{
+  "predicted_topic": "<one of the provided topics>",
+  "topic_confidence": <float 0-1>,
+  "is_answerable": <boolean>,
+  "answer": "<your answer or 'UNANSWERABLE'>"
+}}
+
+JSON Response:

@@ -1,0 +1,24 @@
+{
+    "model_a": "meta-llama/Llama-3.2-1B",
+    "model_b": "Qwen/Qwen3-0.6B",
+    "inference_environment_resources": {
+        "gpu": 1,
+        "cpu": 6,
+        "memory": 26000,
+        "compute_pool": "single-gpu",
+        "image": "docker.io/eddieob/vllm-flashinfer-metaflow:latest"
+    },
+    "vllm_engine_args": {
+        "tensor_parallel_size": 1
+    },
+    "prompts": [
+        "What are the leading Chinese tech companies?",
+        "What are the leading American tech companies?",
+        "What are the leading European tech companies?",
+        "What are the leading Korean tech companies?",
+        "What are the leading Japanese tech companies?",
+        "What are the leading Indian tech companies?",
+        "What are the leading Australian tech companies?",
+        "What are the leading Canadian tech companies?"
+    ]
+}
