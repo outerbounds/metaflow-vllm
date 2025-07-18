@@ -52,7 +52,6 @@ ENV MAMBA_EXE=/usr/local/bin/micromamba \
 # Copy your built Python environment from builder stage
 COPY --from=builder /opt/micromamba /opt/micromamba
 
-# Preserve CoreWeave's CUDA setup + add your CUDA libs if needed
 ENV LD_LIBRARY_PATH=/usr/local/cuda/lib64:$LD_LIBRARY_PATH
 
 ENTRYPOINT ["python", "-m", "vllm.entrypoints.openai.api_server"]
