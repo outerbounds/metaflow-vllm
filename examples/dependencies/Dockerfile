@@ -49,7 +49,6 @@ ENV MAMBA_EXE=/usr/local/bin/micromamba \
     CONDA_PREFIX=/opt/micromamba \
     PATH=/opt/micromamba/bin:$PATH
 
-# Copy your built Python environment from builder stage
 COPY --from=builder /opt/micromamba /opt/micromamba
 
 ENV LD_LIBRARY_PATH=/usr/local/cuda/lib64:$LD_LIBRARY_PATH
