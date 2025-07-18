@@ -35,10 +35,8 @@ class HelloVLLM(FlowSpec):
         """
         An introduction to using the @vllm decorator in API server mode.
 
-        This example uses openai_api_server=True for backward compatibility.
-        The decorator starts a vLLM subprocess server and provides an OpenAI-compatible API.
-
-        For better performance, consider using the native engine mode (see flow_native.py).
+        This example uses openai_api_server=True,
+        starting a vLLM subprocess server and an OpenAI-compatible API.
 
         NOTE: vLLM serves one model per server instance. If you need multiple
         models, create separate steps with separate @vllm decorators.
